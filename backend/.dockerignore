@@ -1,0 +1,10 @@
+node_modules
+dist
+storage/uploads/*
+storage/backups/*
+.env
+.env.*
+*.log
+npm-debug.log*
+prisma/sample-data.ts
+**/*.spec.ts

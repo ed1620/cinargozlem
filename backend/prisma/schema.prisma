@@ -1,0 +1,616 @@
+// ============================================================================
+//  Çınar Gözlem Kurumsal Yönetim Platformu (KG-KYP)
+//  DENİZLİ ÇINAR GÖZLEM ÖZEL EĞİTİM ve REHABİLİTASYON MERKEZİ
+//
+//  Prisma / PostgreSQL şeması — Adım 1
+//  Modüler monolit: auth, users(RBAC), personnel, finance, vehicles,
+//  students, notifications, reports/audit.
+//
+//  Not: TC No, maaş ve finansal tutar gibi hassas PII alanları uygulama
+//  katmanında (common/utils/crypto) şifrelenip DB'ye şifreli metin olarak
+//  yazılır; bu yüzden bu alanlar String olarak modellenmiştir.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+//  ENUM'LAR
+// ============================================================================
+
+/// Sistemdeki modüller. RBAC yetkileri modül bazında verilir.
+enum ModuleCode {
+  DASHBOARD
+  USERS // Kullanıcı & yetki yönetimi
+  PERSONNEL // Personel & Bordro & İzin
+  FINANCE // Gelir - Gider
+  VEHICLES // Araç, Sigorta, Akaryakıt, Bakım
+  STUDENTS // Öğrenci Takip
+  NOTIFICATIONS // Uyarı motoru
+  REPORTS // Raporlama
+}
+
+/// RBAC işlem yetkileri (matris sütunları).
+enum PermissionAction {
+  VIEW
+  CREATE
+  UPDATE
+  DELETE
+  EXPORT // Rapor / PDF alma
+}
+
+enum RecordStatus {
+  ACTIVE
+  PASSIVE
+}
+
+enum SalaryType {
+  MONTHLY
+  HOURLY
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
+enum LeaveType {
+  ANNUAL // Yıllık izin
+  EXCUSE // Mazeret
+  SICK // Hastalık / raporlu
+  UNPAID // Ücretsiz
+  OTHER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum PaymentMethod {
+  CASH // Nakit
+  TRANSFER // Havale
+  EFT
+  CREDIT_CARD // Kredi Kartı
+  OTHER
+}
+
+enum FuelType {
+  DIESEL // Dizel
+  GASOLINE // Benzin
+  LPG
+  ELECTRIC // Elektrik
+}
+
+enum InsuranceType {
+  TRAFFIC // Zorunlu trafik
+  KASKO
+}
+
+/// Otomatik gider kaydının kaynağı (modüller arası entegrasyon izi).
+enum FinanceSourceModule {
+  MANUAL
+  PERSONNEL // Maaş ödemesinden
+  VEHICLE_FUEL // Akaryakıttan
+  VEHICLE_MAINTENANCE // Bakımdan
+  VEHICLE_INSURANCE // Sigorta/kaskodan
+  STUDENT // Öğrenci ödemesinden (gelir)
+}
+
+enum NotificationType {
+  INSURANCE_EXPIRY
+  KASKO_EXPIRY
+  INSPECTION_EXPIRY
+  EXPIRED_RECORD
+  LEAVE_EXPIRY
+  LEAVE_OVERLAP
+  UNPAID_SALARY
+  NEGATIVE_BALANCE
+  SYSTEM
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+// ============================================================================
+//  RBAC & KİMLİK — User → Role → Module → Action
+// ============================================================================
+
+model User {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  /// Süper yönetici tüm modüllerde tam yetkilidir (matristen bağımsız override).
+  isSuperAdmin Boolean  @default(false)
+  status       RecordStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  roles           UserRole[]
+  /// Kullanıcı bazlı yetki override'ları (rolün üstünde granular kontrol).
+  userPermissions UserPermission[]
+  refreshTokens   RefreshToken[]
+
+  auditLogs        AuditLog[]
+  notifications    Notification[]     @relation("NotificationTarget")
+  incomesReceived  Income[]           @relation("IncomeReceivedBy")
+  expensesPaid     Expense[]          @relation("ExpensePaidBy")
+
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // Öğretmen, Muhasebe, Operasyon, Yönetici Yardımcısı...
+  description String?
+  isSystem    Boolean  @default(false) // Silinemeyen sistem rolleri (ADMIN vb.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+/// Rol bazlı yetki matrisi satırı: bir rol + bir modül + bir işlem.
+model RolePermission {
+  id      String           @id @default(uuid())
+  roleId  String
+  module  ModuleCode
+  action  PermissionAction
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module, action])
+  @@index([module])
+}
+
+/// Kullanıcı bazlı override: allowed=true açık verir, false ise rolden gelse
+/// bile açıkça engeller (admin'in granular override gücü).
+model UserPermission {
+  id      String           @id @default(uuid())
+  userId  String
+  module  ModuleCode
+  action  PermissionAction
+  allowed Boolean          @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, module, action])
+  @@index([userId])
+}
+
+// ============================================================================
+//  DENETİM (AUDIT) & BİLDİRİM
+// ============================================================================
+
+model AuditLog {
+  id         String     @id @default(uuid())
+  userId     String?
+  action     String // CREATE / UPDATE / DELETE / LOGIN / EXPORT ...
+  module     ModuleCode?
+  resource   String // "Personnel", "Income", ...
+  resourceId String?
+  ipAddress  String?
+  userAgent  String?
+  details    Json? // eski/yeni değer farkları vb.
+  createdAt  DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([module])
+  @@index([resource, resourceId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id           String               @id @default(uuid())
+  type         NotificationType
+  severity     NotificationSeverity @default(WARNING)
+  title        String
+  message      String
+  module       ModuleCode?
+  resource     String?
+  resourceId   String?
+  /// Belirli bir kullanıcıya yönelikse; null ise tüm adminlere gösterilir.
+  targetUserId String?
+  isRead       Boolean              @default(false)
+  readAt       DateTime?
+  /// Aynı olay için mükerrer üretimi engelleyen anahtar (ör: "INSURANCE:<id>:15D").
+  dedupeKey    String?              @unique
+  createdAt    DateTime             @default(now())
+
+  targetUser User? @relation("NotificationTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// ============================================================================
+//  PERSONEL & BORDRO & İZİN MODÜLÜ
+// ============================================================================
+
+model Personnel {
+  id          String       @id @default(uuid())
+  firstName   String
+  lastName    String
+  /// TC No — uygulama katmanında ŞİFRELİ saklanır.
+  tcNoEnc     String?
+  birthDate   DateTime?
+  phone       String?
+  email       String?
+  address     String?
+  title       String // Görev / Ünvan (Öğretmen, Uzman, Personel...)
+  startDate   DateTime
+  status      RecordStatus @default(ACTIVE)
+  salaryType  SalaryType   @default(MONTHLY)
+  note        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  payrolls          Payroll[]
+  leaveRecords      LeaveRecord[]
+  leaveEntitlements LeaveEntitlement[]
+  responsibleVehicles Vehicle[] @relation("VehicleResponsible")
+
+  @@index([status])
+  @@index([lastName, firstName])
+}
+
+/// Aynı personel için her ay yalnızca bir maaş kaydı (unique kısıt).
+model Payroll {
+  id            String        @id @default(uuid())
+  personnelId   String
+  year          Int
+  month         Int // 1-12
+  /// Şifreli saklanan tutarlar (string; uygulama katmanı çözer).
+  grossSalaryEnc String
+  deductionsEnc  String       @default("0")
+  additionsEnc   String       @default("0")
+  netSalaryEnc   String
+  deductionNote  String?
+  additionNote   String?
+  paymentStatus  PaymentStatus @default(UNPAID)
+  paymentDate    DateTime?
+  note           String?
+  /// Ödeme yapıldığında finans modülünde oluşturulan gider kaydı (opsiyonel).
+  expenseId      String?       @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  personnel Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  expense   Expense?  @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  @@unique([personnelId, year, month])
+  @@index([year, month])
+  @@index([paymentStatus])
+}
+
+/// Personelin yıl bazlı yıllık izin hakkı (14/20/26...). Kalan gün hesaplanır.
+model LeaveEntitlement {
+  id           String @id @default(uuid())
+  personnelId  String
+  year         Int
+  entitledDays Int // Yıllık izin hakkı (manuel girilir)
+
+  personnel Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+
+  @@unique([personnelId, year])
+}
+
+model LeaveRecord {
+  id          String    @id @default(uuid())
+  personnelId String
+  type        LeaveType @default(ANNUAL)
+  startDate   DateTime
+  endDate     DateTime
+  totalDays   Int // Otomatik hesaplanır (uygulama katmanı)
+  note        String?
+  status      RecordStatus @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  personnel Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+
+  @@index([personnelId])
+  @@index([startDate, endDate])
+}
+
+// ============================================================================
+//  FİNANS MODÜLÜ — Gelir / Gider / Kategori / Kasa
+// ============================================================================
+
+model FinanceCategory {
+  id        String       @id @default(uuid())
+  name      String
+  type      CategoryType
+  status    RecordStatus @default(ACTIVE) // Pasif kategori yeni kayıtta seçilemez
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  incomes  Income[]
+  expenses Expense[]
+
+  @@unique([name, type])
+  @@index([type, status])
+}
+
+model Income {
+  id             String              @id @default(uuid())
+  date           DateTime
+  incomeType     String // öğrenci ödemesi, devlet desteği, bağış...
+  categoryId     String?
+  description    String?
+  /// Tutar — şifreli saklanır.
+  amountEnc      String
+  paymentMethod  PaymentMethod       @default(CASH)
+  receivedById   String?
+  /// Opsiyonel öğrenci ilişkisi (öğrenci ödemesi).
+  studentId      String?
+  sourceModule   FinanceSourceModule @default(MANUAL)
+  status         RecordStatus        @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  category   FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  receivedBy User?            @relation("IncomeReceivedBy", fields: [receivedById], references: [id], onDelete: SetNull)
+  student    Student?         @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([date])
+  @@index([categoryId])
+  @@index([status])
+}
+
+model Expense {
+  id             String              @id @default(uuid())
+  date           DateTime
+  expenseType    String // maaş, kira, fatura, malzeme...
+  categoryId     String?
+  description    String?
+  amountEnc      String
+  paymentMethod  PaymentMethod       @default(CASH)
+  paidById       String?
+  attachmentUrl  String? // fatura/belge (pdf, jpg, png)
+  /// Otomatik oluşturulduysa kaynağı ve kaynak kaydın id'si.
+  sourceModule   FinanceSourceModule @default(MANUAL)
+  sourceEntityId String?
+  status         RecordStatus        @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  category FinanceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  paidBy   User?            @relation("ExpensePaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  payroll  Payroll?         @relation
+
+  @@index([date])
+  @@index([categoryId])
+  @@index([sourceModule, sourceEntityId])
+  @@index([status])
+}
+
+// ============================================================================
+//  ARAÇ MODÜLÜ — Araç / Sigorta-Kasko / Muayene / Akaryakıt / Bakım
+// ============================================================================
+
+model Vehicle {
+  id                    String       @id @default(uuid())
+  plate                 String       @unique
+  brand                 String
+  model                 String
+  modelYear             Int?
+  vehicleType           String? // Minibüs, Otomobil...
+  chassisNo             String?
+  engineNo              String?
+  fuelType              FuelType?
+  responsiblePersonnelId String?
+  status                RecordStatus @default(ACTIVE)
+  note                  String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  responsible  Personnel?          @relation("VehicleResponsible", fields: [responsiblePersonnelId], references: [id], onDelete: SetNull)
+  insurances   InsurancePolicy[]
+  inspections  Inspection[]
+  fuelRecords  FuelRecord[]
+  maintenances MaintenanceRecord[]
+
+  @@index([status])
+}
+
+model InsurancePolicy {
+  id        String        @id @default(uuid())
+  vehicleId String
+  type      InsuranceType // Trafik / Kasko
+  company   String
+  policyNo  String?
+  startDate DateTime
+  endDate   DateTime
+  amountEnc String? // Poliçe tutarı (şifreli)
+  documentUrl String?
+  note      String?
+  /// Süresi dolan kayıtlar otomatik pasife alınır (cron).
+  status    RecordStatus  @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, type])
+  @@index([endDate])
+}
+
+model Inspection {
+  id              String       @id @default(uuid())
+  vehicleId       String
+  inspectionDate  DateTime // Son muayene tarihi
+  expiryDate      DateTime // Geçerlilik bitiş
+  note            String?
+  /// Yeni muayene eklenince eski kayıt arşivlenir (PASSIVE).
+  status          RecordStatus @default(ACTIVE)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([expiryDate])
+}
+
+/// Akaryakıt — araçtan bağımsız modül gibi, araca ilişkili. Aynı gün çoklu kayıt.
+model FuelRecord {
+  id            String        @id @default(uuid())
+  vehicleId     String
+  date          DateTime
+  time          String? // opsiyonel alım saati "HH:mm"
+  fuelType      FuelType
+  liters        Decimal       @db.Decimal(10, 3)
+  pricePerLiter Decimal       @db.Decimal(10, 4)
+  totalAmount   Decimal       @db.Decimal(12, 2) // otomatik hesaplanır
+  odometer      Int? // km (opsiyonel, önerilir)
+  paymentMethod PaymentMethod @default(CASH)
+  receiptUrl    String?
+  note          String?
+  status        RecordStatus  @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+}
+
+/// Bakım — aynı gün çoklu kayıt. KDV'siz tutar KDV oranından otomatik hesaplanır.
+model MaintenanceRecord {
+  id            String        @id @default(uuid())
+  vehicleId     String
+  date          DateTime
+  time          String?
+  company       String? // Bakım yaptırılan firma
+  description   String?
+  odometer      Int?
+  totalAmount   Decimal       @db.Decimal(12, 2) // Ödenen toplam (KDV dahil)
+  vatRate       Decimal       @db.Decimal(5, 2)  // % KDV oranı
+  netAmount     Decimal       @db.Decimal(12, 2) // KDV'siz tutar (otomatik)
+  paymentMethod PaymentMethod @default(CASH)
+  receiptUrl    String?
+  note          String?
+  status        RecordStatus  @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, date])
+}
+
+// ============================================================================
+//  ÖĞRENCİ MODÜLÜ — Öğrenci / Aktivite / Fotoğraf
+// ============================================================================
+
+model Student {
+  id               String       @id @default(uuid())
+  firstName        String
+  lastName         String
+  /// TC No — şifreli saklanır.
+  tcNoEnc          String?
+  birthDate        DateTime?
+  parentName       String?
+  parentPhone      String?
+  parentEmail      String?
+  parentAddress    String?
+  diagnosis        String? // Tanı / bireysel ihtiyaç
+  registrationDate DateTime
+  status           RecordStatus @default(ACTIVE)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  /// Öğrenci silinince tüm aktivite ve fotoğraflar da silinir (Cascade).
+  activities ActivityRecord[]
+  incomes    Income[]
+
+  @@index([status])
+  @@index([lastName, firstName])
+}
+
+model ActivityRecord {
+  id             String   @id @default(uuid())
+  studentId      String
+  date           DateTime
+  title          String // Aktivite adı / başlığı
+  description    String? // Aktivite açıklaması
+  targetGains    String? // Hedeflenen kazanımlar
+  evaluationNote String? // Değerlendirme / gözlem notu
+  year           Int // Raporlama için
+  month          Int // 1-12
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  images  ActivityImage[]
+
+  @@index([studentId, year, month])
+}
+
+model ActivityImage {
+  id         String   @id @default(uuid())
+  activityId String
+  url        String
+  fileName   String?
+  mimeType   String?
+  sizeBytes  Int?
+  uploadedAt DateTime @default(now())
+
+  activity ActivityRecord @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+}
+
+// ============================================================================
+//  SİSTEM AYARLARI (entegrasyon anahtarları, yedekleme durumu vb.)
+// ============================================================================
+
+model SystemSetting {
+  key       String   @id // "AUTO_EXPENSE_FROM_SALARY", "BACKUP_LAST_RUN"...
+  value     String
+  updatedAt DateTime @updatedAt
+}

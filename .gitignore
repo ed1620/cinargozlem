@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+dist-tools/
+build/
+*.tsbuildinfo
+
+# Env & secrets (ASLA commit edilmez)
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Prisma
+backend/prisma/migrations/dev.db*
+
+# Docker bind-mount verileri (yüklenen dosyalar & yedekler)
+/data/
+
+# Storage (yerel geliştirme yüklemeleri & yedekler)
+backend/storage/uploads/*
+backend/storage/backups/*
+!backend/storage/**/.gitkeep
+
+# Sistemden kopyalanan fontlar (lisans) — Docker imajı kendi DejaVu fontunu kurar
+backend/assets/fonts/*.ttf
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Claude Code yerel yapılandırması
+.claude/

@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  @apply text-slate-800;
+  background-color: #f7f5f1; /* logo ile uyumlu sıcak, nötr arka plan */
+}

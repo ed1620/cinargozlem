@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kgkyp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli}
+      POSTGRES_DB: ${POSTGRES_DB:-kgkyp}
+    volumes:
+      # Kalıcı veritabanı — container silinse bile veri bu named volume'da kalır.
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-kgkyp} -d ${POSTGRES_DB:-kgkyp}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy # DB sağlıklı olmadan başlamaz
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-kgkyp}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-kgkyp}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?gerekli}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?gerekli}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-7d}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?gerekli}
+      FONT_DIR: /usr/share/fonts/truetype/dejavu
+      UPLOAD_DIR: /app/storage/uploads
+      BACKUP_DIR: /app/storage/backups
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      ALERT_CRON: ${ALERT_CRON:-0 8 * * *}
+      BACKUP_CRON: ${BACKUP_CRON:-0 9 * * *}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-Admin1234!}
+      DB_CONNECT_RETRIES: ${DB_CONNECT_RETRIES:-30}
+      DB_CONNECT_RETRY_DELAY_MS: ${DB_CONNECT_RETRY_DELAY_MS:-3000}
+      PORT: 3000
+    volumes:
+      # Yüklenen dosyalar + günlük yedekler host'ta erişilebilir kalsın.
+      - ./data/storage:/app/storage
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy # backend sağlıklı olunca yayına al
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    restart: unless-stopped
+
+volumes:
+  db-data:
+    driver: local
