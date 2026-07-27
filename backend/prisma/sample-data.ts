@@ -55,7 +55,7 @@ async function main() {
     ),
   );
   const expCats = await Promise.all(
-    ['Kira', 'Fatura', 'Maaş', 'Akaryakıt', 'Bakım'].map((name) =>
+    ['Kira', 'Fatura', 'Maaş', 'Akaryakıt', 'Bakım', 'Malzeme'].map((name) =>
       prisma.financeCategory.create({ data: { name, type: 'EXPENSE' } }),
     ),
   );
@@ -138,10 +138,11 @@ async function main() {
 
   // === FİNANS ===
   const incomes = [
-    ['2026-07-02', incCats[0].id, 'Öğrenci aylık ödeme', 15000, 'TRANSFER'],
-    ['2026-07-05', incCats[0].id, 'Öğrenci aylık ödeme', 15000, 'CASH'],
-    ['2026-07-10', incCats[1].id, 'Devlet destek ödemesi', 120000, 'TRANSFER'],
-    ['2026-07-18', incCats[2].id, 'Bağış', 8000, 'CASH'],
+    ['2026-07-03', incCats[1].id, 'Devlet destek ödemesi', 320000, 'TRANSFER'],
+    ['2026-07-02', incCats[0].id, 'Öğrenci aylık ödeme (Zeynep)', 18000, 'TRANSFER'],
+    ['2026-07-05', incCats[0].id, 'Öğrenci aylık ödeme (Emir)', 18000, 'CASH'],
+    ['2026-07-12', incCats[0].id, 'Öğrenci ek seans ödemesi', 15000, 'CREDIT_CARD'],
+    ['2026-07-18', incCats[2].id, 'Bağış', 12000, 'CASH'],
   ] as const;
   for (const [date, categoryId, description, amount, pm] of incomes) {
     await prisma.income.create({
@@ -158,8 +159,9 @@ async function main() {
   const expenses = [
     ['2026-07-01', expCats[0].id, 'Aylık kira', 35000, 'TRANSFER'],
     ['2026-07-03', expCats[1].id, 'Elektrik + su faturası', 9500, 'TRANSFER'],
-    ['2026-07-06', expCats[2].id, 'Personel maaş ödemeleri', 138000, 'TRANSFER'],
+    ['2026-07-06', expCats[2].id, 'Personel maaş ödemeleri', 205000, 'TRANSFER'],
     ['2026-07-15', expCats[1].id, 'İnternet + telefon', 2200, 'CREDIT_CARD'],
+    ['2026-07-14', expCats[5].id, 'Eğitim malzemeleri', 11000, 'CASH'],
   ] as const;
   for (const [date, categoryId, description, amount, pm] of expenses) {
     await prisma.expense.create({
