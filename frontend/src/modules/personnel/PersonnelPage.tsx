@@ -12,6 +12,7 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  LinkButton,
 } from '../../components/ui';
 import { downloadReport, personnelApi } from '../../services/domain';
 
@@ -61,9 +62,9 @@ export function PersonnelPage() {
     {
       header: 'Ad Soyad',
       render: (p) => (
-        <button className="text-brand hover:underline font-medium" onClick={() => navigate(`/personnel/${p.id}`)}>
+        <LinkButton onClick={() => navigate(`/personnel/${p.id}`)}>
           {p.firstName} {p.lastName}
-        </button>
+        </LinkButton>
       ),
     },
     { header: 'Görev', render: (p) => p.title },
@@ -117,7 +118,7 @@ export function PersonnelPage() {
         </select>
         <Button variant="secondary" onClick={load}>Ara</Button>
       </div>
-      <Card>
+      <Card className="card-rise">
         <DataTable columns={columns} rows={data.items} keyOf={(p) => p.id} />
       </Card>
 

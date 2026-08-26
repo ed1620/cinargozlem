@@ -11,6 +11,7 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  SegmentedControl,
 } from '../../components/ui';
 import { downloadReport, financeApi } from '../../services/domain';
 
@@ -89,15 +90,19 @@ export function FinancePage() {
 
       {/* Sekmeler */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
-          {([['income', 'Gelirler'], ['expense', 'Giderler'], ['category', 'Kategoriler']] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setTab(k)} className={`px-3 py-1.5 rounded-md text-sm ${tab === k ? 'bg-white shadow font-medium' : 'text-slate-600'}`}>{l}</button>
-          ))}
-        </div>
+        <SegmentedControl
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'income', label: 'Gelirler' },
+            { value: 'expense', label: 'Giderler' },
+            { value: 'category', label: 'Kategoriler' },
+          ]}
+        />
         <Can module="FINANCE" action="CREATE"><Button onClick={openNew}>+ Yeni</Button></Can>
       </div>
 
-      <Card className="overflow-x-auto">
+      <Card className="card-rise overflow-x-auto">
         {tab === 'category' ? (
           <table className="w-full text-sm">
             <thead><tr className="bg-slate-50 text-left text-slate-500"><th className="px-4 py-2">Ad</th><th className="px-4 py-2">Tür</th><th className="px-4 py-2">Durum</th><th className="px-4 py-2"></th></tr></thead>

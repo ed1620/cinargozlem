@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Can } from '../../components/Can';
+import { Button, inputCls, LinkButton } from '../../components/ui';
 import { rbacService } from '../../services/rbac.service';
 import {
   ACTION_LABEL,
@@ -102,19 +103,19 @@ export function RbacMatrixPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Yetki Matrisi</h1>
+        <h1 className="text-xl font-semibold tracking-[-0.015em]">Yetki Matrisi</h1>
         {message && <span className="text-sm text-slate-500">{message}</span>}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Rol listesi */}
         <div className="w-full lg:w-56 lg:shrink-0 space-y-3">
-          <div className="bg-white border rounded-xl p-2">
+          <div className="bg-white rounded-xl shadow-[0_1px_2px_rgba(47,52,58,0.04),0_4px_12px_-4px_rgba(47,52,58,0.08)] ring-1 ring-slate-900/5 p-2">
             {roles.map((r) => (
               <button
                 key={r.id}
                 onClick={() => selectRole(r)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
+                className={`press-feedback w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between ${
                   r.id === selectedId
                     ? 'bg-brand-light text-brand-dark font-medium'
                     : 'hover:bg-slate-50'
@@ -132,19 +133,19 @@ export function RbacMatrixPage() {
           </div>
 
           <Can module="USERS" action="CREATE">
-            <div className="bg-white border rounded-xl p-3 space-y-2">
+            <div className="bg-white rounded-xl shadow-[0_1px_2px_rgba(47,52,58,0.04),0_4px_12px_-4px_rgba(47,52,58,0.08)] ring-1 ring-slate-900/5 p-3 space-y-2">
               <div className="text-xs font-medium text-slate-500">
                 Yeni Rol
               </div>
               <input
-                className="w-full border rounded-md px-2 py-1.5 text-sm"
+                className={inputCls}
                 placeholder="Rol adı"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
               />
               <button
                 onClick={createRole}
-                className="w-full text-sm bg-brand text-white rounded-md py-1.5 hover:bg-brand-dark"
+                className="press-feedback w-full text-sm bg-brand text-white rounded-md py-1.5 hover:bg-brand-dark active:bg-brand-dark"
               >
                 Ekle
               </button>
@@ -157,7 +158,7 @@ export function RbacMatrixPage() {
           {!selected ? (
             <div className="text-slate-400 text-sm">Bir rol seçin.</div>
           ) : (
-            <div className="bg-white border rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl shadow-[0_1px_2px_rgba(47,52,58,0.04),0_4px_12px_-4px_rgba(47,52,58,0.08)] ring-1 ring-slate-900/5 overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b">
                 <div>
                   <div className="font-medium">{selected.name}</div>
@@ -168,13 +169,9 @@ export function RbacMatrixPage() {
                   )}
                 </div>
                 <Can module="USERS" action="UPDATE">
-                  <button
-                    onClick={save}
-                    disabled={!dirty || saving}
-                    className="text-sm bg-brand text-white rounded-md px-4 py-1.5 hover:bg-brand-dark disabled:opacity-50"
-                  >
+                  <Button onClick={save} disabled={!dirty || saving} size="sm">
                     {saving ? 'Kaydediliyor…' : 'Kaydet'}
-                  </button>
+                  </Button>
                 </Can>
               </div>
 
@@ -206,19 +203,16 @@ export function RbacMatrixPage() {
                             <td key={a} className="px-3 py-2 text-center">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 accent-brand"
+                                className="h-4 w-4 accent-brand cursor-pointer"
                                 checked={checked.has(cellKey(m, a))}
                                 onChange={() => toggle(m, a)}
                               />
                             </td>
                           ))}
                           <td className="px-3 py-2 text-center">
-                            <button
-                              onClick={() => toggleRow(m, !rowAll)}
-                              className="text-[11px] text-brand hover:underline"
-                            >
-                              {rowAll ? 'Temizle' : 'Tümü'}
-                            </button>
+                            <LinkButton onClick={() => toggleRow(m, !rowAll)}>
+                              <span className="text-[11px]">{rowAll ? 'Temizle' : 'Tümü'}</span>
+                            </LinkButton>
                           </td>
                         </tr>
                       );

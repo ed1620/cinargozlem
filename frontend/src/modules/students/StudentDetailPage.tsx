@@ -10,6 +10,7 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  PageSkeleton,
 } from '../../components/ui';
 import { assetUrl, downloadReport, studentsApi } from '../../services/domain';
 
@@ -60,7 +61,7 @@ export function StudentDetailPage() {
     loadActs();
   };
 
-  if (!student) return <div className="text-slate-400">Yükleniyor…</div>;
+  if (!student) return <PageSkeleton />;
 
   return (
     <div>
@@ -138,7 +139,8 @@ export function StudentDetailPage() {
                       type="button"
                       onClick={() => delImage(img.id)}
                       title="Fotoğrafı sil"
-                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white text-xs leading-none grid place-items-center shadow hover:bg-red-700"
+                      aria-label="Fotoğrafı sil"
+                      className="press-feedback absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-600 text-white text-xs leading-none grid place-items-center shadow hover:bg-red-700 active:bg-red-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
                       ×
                     </button>

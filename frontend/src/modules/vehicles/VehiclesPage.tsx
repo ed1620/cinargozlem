@@ -11,6 +11,7 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  LinkButton,
 } from '../../components/ui';
 import { downloadReport, vehiclesApi } from '../../services/domain';
 
@@ -37,7 +38,7 @@ export function VehiclesPage() {
   const remove = async (v: any) => { if (confirm(`${v.plate} ve tüm kayıtları silinsin mi?`)) { await vehiclesApi.remove(v.id); load(); } };
 
   const columns: Column<any>[] = [
-    { header: 'Plaka', render: (v) => <button className="text-brand hover:underline font-medium" onClick={() => navigate(`/vehicles/${v.id}`)}>{v.plate}</button> },
+    { header: 'Plaka', render: (v) => <LinkButton onClick={() => navigate(`/vehicles/${v.id}`)}>{v.plate}</LinkButton> },
     { header: 'Marka / Model', render: (v) => `${v.brand} ${v.model}` },
     { header: 'Yakıt', render: (v) => FUEL[v.fuelType] ?? '-' },
     { header: 'Durum', render: (v) => (v.status === 'ACTIVE' ? <Badge tone="green">Aktif</Badge> : <Badge tone="slate">Pasif</Badge>) },
@@ -66,7 +67,7 @@ export function VehiclesPage() {
           </div>
         }
       />
-      <Card><DataTable columns={columns} rows={data.items} keyOf={(v) => v.id} /></Card>
+      <Card className="card-rise"><DataTable columns={columns} rows={data.items} keyOf={(v) => v.id} /></Card>
 
       <Modal open={open} title="Yeni Araç" onClose={() => setOpen(false)} footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Vazgeç</Button><Button onClick={() => (document.getElementById('v-form') as HTMLFormElement)?.requestSubmit()}>Kaydet</Button></>}>
         <form id="v-form" onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -80,7 +80,7 @@ export function UsersPage() {
           </div>
         }
       />
-      <Card><DataTable columns={columns} rows={users} keyOf={(u) => u.id} /></Card>
+      <Card className="card-rise"><DataTable columns={columns} rows={users} keyOf={(u) => u.id} /></Card>
 
       <Modal open={open} title="Yeni Kullanıcı" onClose={() => setOpen(false)} footer={<><Button variant="secondary" onClick={() => setOpen(false)}>Vazgeç</Button><Button onClick={() => (document.getElementById('u-form') as HTMLFormElement)?.requestSubmit()}>Kaydet</Button></>}>
         <form id="u-form" onSubmit={submit} className="space-y-4">
@@ -90,7 +90,7 @@ export function UsersPage() {
             <Field label="Ad Soyad" required><input className={inputCls} required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></Field>
             <Field label="Şifre" required><input type="password" className={inputCls} required minLength={6} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
           </div>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="cursor-pointer select-none flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4 accent-brand" checked={form.isSuperAdmin} onChange={(e) => setForm({ ...form, isSuperAdmin: e.target.checked })} />
             Süper Yönetici (tüm modüllerde tam yetki)
           </label>

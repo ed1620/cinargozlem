@@ -11,3 +11,267 @@ body {
   @apply text-slate-800;
   background-color: #f7f5f1; /* logo ile uyumlu sıcak, nötr arka plan */
 }
+
+/* Her tabloda rakam genişliği sabit: para, tarih ve sayaç sütunlarında
+   basamaklar satırlar arası hizalanır, veri tazelenince sayı zıplamaz.
+   Ortak DataTable'a sınıf eklemek yetmezdi — dört sayfa kendi <table>'ını
+   kuruyor; kural tabloya ait, tek tek bileşenlere değil. */
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Yüzen chrome (header) — opak bir şerit değil, içeriğin altından aktığı
+   yarı saydam bir malzeme. Doygunluk artışı, altından geçen rengin
+   camdan görünmesini sağlar. */
+.chrome-translucent {
+  background-color: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* Saydamlık azaltıldığında yüzey buzlanmaz, tamamen katılaşır (§14). */
+@media (prefers-reduced-transparency: reduce) {
+  .chrome-translucent {
+    background-color: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* backdrop-filter desteklenmiyorsa yarı saydam zemin okunabilirliği
+   bozardı — katı zemine düş. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .chrome-translucent {
+    background-color: #fff;
+  }
+}
+
+/* Sert 1px ayırıcı yerine kenar efekti: yalnızca içerik gerçekten
+   chrome'un altına girdiğinde beliren yumuşak bir geçiş. */
+.scroll-edge {
+  background: linear-gradient(to bottom, rgb(47 52 58 / 0.07), rgb(47 52 58 / 0));
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.scroll-edge[data-visible='true'] {
+  opacity: 1;
+}
+
+/* Yapısal bölge (sidebar) — header'dan daha ağır, daha koyu malzeme.
+   Malzeme ağırlığı hiyerarşiyi taşır: koyu yüzey bölge ayırır, açık
+   yüzey etkileşimli öğeyi öne çıkarır. Yalnızca içeriğin üstünde
+   yüzdüğü mobilde saydam; masaüstünde akışın içinde durduğu ve
+   altında gösterecek bir şey olmadığı için katı. */
+.chrome-sidebar {
+  background-color: rgb(47 52 58 / 0.82);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+@media (min-width: 1024px) {
+  .chrome-sidebar {
+    background-color: #2f343a;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .chrome-sidebar {
+    background-color: #2f343a;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .chrome-sidebar {
+    background-color: #2f343a;
+  }
+}
+
+/* Çekmecenin konumunu ve karartmanın yoğunluğunu CSS geçişi değil, JS'teki
+   yay sürüyor (src/lib/spring.ts). CSS geçişi jest güdümlü hareket için
+   yanlış araç: uçuş halinde yakalanıp geri çevrilemez, mevcut hızı
+   devralamaz. Burada yalnızca jestin çalışabilmesi için gereken kural var —
+   yatay sürükleme tarayıcıya kapılmasın, dikey kaydırma çalışmaya devam
+   etsin. */
+.drawer {
+  touch-action: pan-y;
+  will-change: transform;
+}
+
+/* Masaüstünde çekmece diye bir şey yok — sidebar akışın kalıcı parçası,
+   JS'in yazdığı satır içi dönüşüm burada geçersiz. */
+@media (min-width: 1024px) {
+  .drawer {
+    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    will-change: auto;
+  }
+}
+
+/* Hareket azaltıldığında yay ve jest tamamen devreden çıkar: ekranı kaplayan
+   kayma yerine kısa bir çapraz geçiş kalır. Geri bildirim sürer, vestibüler
+   hareket gider. */
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transform: none !important;
+    transition: opacity 200ms ease;
+    will-change: auto;
+  }
+  .drawer[data-open='true'] {
+    opacity: 1;
+  }
+  .drawer[data-open='false'] {
+    opacity: 0;
+  }
+  .scrim {
+    transition: opacity 200ms ease;
+  }
+  .scrim[data-open='true'] {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .scrim[data-open='false'] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+/* Diyalog — açılırken tetikleyicinin bulunduğu yönden, hafifçe aşağıdan
+   ölçeklenerek gelir; kapanırken aynı yoldan geri gider. Sert mount/unmount
+   pencereyi hiçbir yerden gelmemiş gibi gösterir. */
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.98);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.modal-in {
+  animation: modal-in 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* Çıkış girişin aynası: kontrol noktaları terslenmiş, süre biraz kısa —
+   kullanıcı kapatmaya karar vermiştir, bekletmenin âlemi yok. */
+.modal-out {
+  animation: modal-out 180ms cubic-bezier(0, 0.28, 0.28, 0.68) both;
+}
+.scrim-in {
+  animation: fade-in 240ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+.scrim-out {
+  animation: fade-out 180ms cubic-bezier(0, 0.28, 0.28, 0.68) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-in,
+  .scrim-in {
+    animation: fade-in 160ms ease both;
+  }
+  .modal-out,
+  .scrim-out {
+    animation: fade-out 140ms ease both;
+  }
+}
+
+/* Sekme göstergesi — seçim ani yer değiştirmez, kayarak gider; ara kareler
+   nereden nereye gidildiğini anlatır. */
+.seg-thumb {
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg-thumb {
+    transition: none;
+  }
+}
+
+/* Basma geri bildirimi — :active, yani parmak/fare değdiği an, bırakışta
+   değil. Bırakışı beklemek düğmeyi ölü hissettirir. */
+.press-feedback {
+  transition: transform 100ms ease-out, background-color 100ms ease-out;
+}
+.press-feedback:active {
+  transform: scale(0.97);
+}
+
+/* Hareket azaltıldığında ölçek değişimi kalkar ama geri bildirim kaybolmaz:
+   renk değişimi kalır. */
+@media (prefers-reduced-motion: reduce) {
+  .press-feedback {
+    transition: background-color 100ms ease-out;
+  }
+  .press-feedback:active {
+    transform: none;
+  }
+}
+
+/* Kart girişi — yalnızca transform + opacity animate edilir, ikisi de
+   compositor'da çalışır ve layout tetiklemez. Eğri overshoot içermez
+   (kritik sönümlü yayın karşılığı: ~0.4 sn oturma, sıçrama yok);
+   sıçrama yalnızca kullanıcının momentum taşıdığı jestlerde yerinde olur,
+   kendiliğinden beliren bir kartta değil. */
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes card-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.card-rise {
+  animation: card-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hareket azaltıldığında geri bildirim kaybolmaz, yalnızca yer değiştirme
+   kalkar: kayma/ölçek yerine kısa bir çapraz geçiş kalır. */
+@media (prefers-reduced-motion: reduce) {
+  .card-rise {
+    animation: card-fade 200ms ease both;
+    animation-delay: 0ms !important;
+  }
+}
