@@ -12,6 +12,12 @@
     "rootDir": "./src",
     "baseUrl": "./",
     "incremental": true,
+    // Önbellek çıktının İÇİNDE dursun. nest-cli.json'daki deleteOutDir
+    // her başlangıçta dist/ klasörünü siler; önbellek dışarıda kalırsa
+    // tsc "her şey güncel" deyip sıfır dosya üretir ve derleme sessizce
+    // boş çıkar (nest build exit 0, ama dist/main.js yok). İkisi aynı
+    // yerde olunca birlikte silinir ve asla ayrışamazlar.
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "skipLibCheck": true,
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,

@@ -8,3 +8,6 @@ storage/backups/*
 npm-debug.log*
 prisma/sample-data.ts
 **/*.spec.ts
+
+# TypeScript artımlı derleme önbelleği — imaja sızarsa derleme sessizce boş çıkar
+*.tsbuildinfo
