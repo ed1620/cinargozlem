@@ -90,17 +90,19 @@ cinargozlem/
 │   │   │   ├── middleware/       # Audit log + modül bağlamı
 │   │   │   └── dto/              # Ortak liste/sayfalama DTO'ları
 │   │   ├── app.module.ts
-│   │   └── main.ts               # helmet, trust proxy, statik /uploads
+│   │   └── main.ts               # helmet, trust proxy, statik /uploads, HOST bağlama
 │   └── package.json
 └── frontend/                     # React + Vite + TS + Tailwind
     ├── Dockerfile                # build → nginx
     ├── nginx.conf                # SPA + /api & /uploads proxy
     ├── public/logo.png
     └── src/
-        ├── components/           # Layout, Sidebar (drawer), Header (hamburger),
-        │                         #   ProtectedRoute, Can, ui/ (Button, Modal, DataTable…)
+        ├── components/           # Layout, Sidebar (sürüklenebilir çekmece), Header,
+        │                         #   ProtectedRoute, Can, ui/ (Button, Modal, DataTable,
+        │                         #   PageSkeleton, SegmentedControl, LinkButton…)
         ├── modules/              # auth, dashboard, students, personnel,
         │                         #   finance, vehicles, notifications, reports, users
+        ├── lib/                  # spring.ts — jest fiziği (yay, momentum, lastik direnç)
         ├── services/             # api (JWT+refresh), domain, rbac, dashboard
         ├── store/                # auth.store (Zustand) — yetki state
         └── types.ts              # ModuleCode/PermissionAction + modül meta
@@ -178,6 +180,34 @@ npm run dev                 # http://localhost:5173 (API → :3000 proxy)
 ```
 
 Giriş: `admin` / `SEED_ADMIN_PASSWORD` (varsayılan `Admin1234!`).
+
+### Ağ arayüzü (`HOST`)
+
+Backend'in hangi arayüze bağlanacağı `HOST` ile ayarlanır:
+
+| Değer | Etki |
+|-------|------|
+| `0.0.0.0` (varsayılan) | Tüm arayüzler — **Docker için gerekli**, `web` konteyneri backend'e ancak böyle ulaşır |
+| `127.0.0.1` | Yalnızca bu makine — API ağdan görünmez |
+
+`backend/.env.example` `HOST=127.0.0.1` ile gelir, dolayısıyla yukarıdaki
+`cp .env.example .env` adımından sonra yerel API zaten dışarı kapalıdır.
+Compose tarafında bu değişken tanımlı değildir; backend varsayılanı olan
+`0.0.0.0` geçerli kalır.
+
+### Telefondan / başka cihazdan test
+
+Arayüzü ağa açmak yeterlidir; backend'i açmaya gerek yoktur, çünkü Vite'ın
+`/api` proxy'si geliştirme makinesinde çalışır:
+
+```bash
+cd frontend
+npm run dev -- --host 0.0.0.0    # Network satırındaki adresi telefonda açın
+```
+
+`HOST=127.0.0.1` ayarlıysa API dışarıdan erişilemez, arayüz yine çalışır.
+Bayrak komut satırında verildiği için kalıcı değildir — bayraksız yeniden
+başlatmak normal (yalnızca localhost) haline döndürür.
 
 > Not: PDF'lerde Türkçe karakterler için `backend/assets/fonts/` içine bir Unicode TTF
 > (DejaVuSans) gerekir; Docker imajı bu fontu kendisi kurar.
