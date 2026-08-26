@@ -206,6 +206,18 @@ table {
   }
 }
 
+/* Sekme göstergesi — seçim ani yer değiştirmez, kayarak gider; ara kareler
+   nereden nereye gidildiğini anlatır. */
+.seg-thumb {
+  transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg-thumb {
+    transition: none;
+  }
+}
+
 /* Basma geri bildirimi — :active, yani parmak/fare değdiği an, bırakışta
    değil. Bırakışı beklemek düğmeyi ölü hissettirir. */
 .press-feedback {

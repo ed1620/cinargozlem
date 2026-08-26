@@ -11,6 +11,7 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  PageSkeleton,
 } from '../../components/ui';
 import { downloadReport, personnelApi } from '../../services/domain';
 
@@ -77,7 +78,7 @@ export function PersonnelDetailPage() {
     load();
   };
 
-  if (!p) return <div className="text-slate-400">Yükleniyor…</div>;
+  if (!p) return <PageSkeleton />;
   const active = p.status === 'ACTIVE';
 
   return (

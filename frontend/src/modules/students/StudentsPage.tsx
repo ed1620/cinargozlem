@@ -12,6 +12,7 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  LinkButton,
 } from '../../components/ui';
 import { studentsApi } from '../../services/domain';
 
@@ -72,9 +73,9 @@ export function StudentsPage() {
     {
       header: 'Ad Soyad',
       render: (s) => (
-        <button className="text-brand hover:underline font-medium" onClick={() => navigate(`/students/${s.id}`)}>
+        <LinkButton onClick={() => navigate(`/students/${s.id}`)}>
           {s.firstName} {s.lastName}
-        </button>
+        </LinkButton>
       ),
     },
     { header: 'Veli', render: (s) => s.parentName || '-' },
@@ -138,7 +139,7 @@ export function StudentsPage() {
         <Button variant="secondary" onClick={load}>Ara</Button>
       </div>
 
-      <Card>
+      <Card className="card-rise">
         <DataTable columns={columns} rows={data.items} keyOf={(s) => s.id} />
       </Card>
 

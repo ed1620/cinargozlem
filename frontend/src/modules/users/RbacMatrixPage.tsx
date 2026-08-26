@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Can } from '../../components/Can';
+import { Button, inputCls, LinkButton } from '../../components/ui';
 import { rbacService } from '../../services/rbac.service';
 import {
   ACTION_LABEL,
@@ -137,7 +138,7 @@ export function RbacMatrixPage() {
                 Yeni Rol
               </div>
               <input
-                className="w-full border rounded-md px-2 py-1.5 text-sm"
+                className={inputCls}
                 placeholder="Rol adı"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
@@ -168,13 +169,9 @@ export function RbacMatrixPage() {
                   )}
                 </div>
                 <Can module="USERS" action="UPDATE">
-                  <button
-                    onClick={save}
-                    disabled={!dirty || saving}
-                    className="text-sm bg-brand text-white rounded-md px-4 py-1.5 hover:bg-brand-dark disabled:opacity-50"
-                  >
+                  <Button onClick={save} disabled={!dirty || saving} size="sm">
                     {saving ? 'Kaydediliyor…' : 'Kaydet'}
-                  </button>
+                  </Button>
                 </Can>
               </div>
 
@@ -206,19 +203,16 @@ export function RbacMatrixPage() {
                             <td key={a} className="px-3 py-2 text-center">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 accent-brand"
+                                className="h-4 w-4 accent-brand cursor-pointer"
                                 checked={checked.has(cellKey(m, a))}
                                 onChange={() => toggle(m, a)}
                               />
                             </td>
                           ))}
                           <td className="px-3 py-2 text-center">
-                            <button
-                              onClick={() => toggleRow(m, !rowAll)}
-                              className="text-[11px] text-brand hover:underline"
-                            >
-                              {rowAll ? 'Temizle' : 'Tümü'}
-                            </button>
+                            <LinkButton onClick={() => toggleRow(m, !rowAll)}>
+                              <span className="text-[11px]">{rowAll ? 'Temizle' : 'Tümü'}</span>
+                            </LinkButton>
                           </td>
                         </tr>
                       );

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { CSSProperties, ReactNode, useEffect, useRef, useState } from 'react';
 
 // ===== Button =====
 export function Button({
@@ -65,12 +65,22 @@ export function PageHeader({
 }
 
 // ===== Card =====
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = '',
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Kademeli giriş için animationDelay gibi örnek bazlı değerler. */
+  style?: CSSProperties;
+}) {
   // Sert 1px kenarlık yerine yarı saydam gölge: kart arka planın üstünde
   // duran gerçek bir yüzey gibi okunur (dashboard'daki StatCard ile aynı
   // reçete — aynı görünen şeyler aynı davranmalı).
   return (
     <div
+      style={style}
       className={`bg-white rounded-xl shadow-[0_1px_2px_rgba(47,52,58,0.04),0_4px_12px_-4px_rgba(47,52,58,0.08)] ring-1 ring-slate-900/5 ${className}`}
     >
       {children}
@@ -286,3 +296,133 @@ export const fmtMoney = (n: number) =>
   n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
 export const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString('tr-TR') : '-';
+
+// ===== Skeleton =====
+/** Yükleme sırasında son yerleşimin yerini tutar — veri gelince sayfa zıplamaz. */
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`bg-slate-100 rounded animate-pulse ${className}`} />;
+}
+
+/** Detay/liste ekranlarının ortak yükleme iskeleti. */
+export function PageSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="space-y-5" aria-busy="true" aria-live="polite">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-52" />
+        <Skeleton className="h-4 w-32" />
+      </div>
+      {Array.from({ length: rows }, (_, i) => (
+        <Card key={i} className="p-5 space-y-3">
+          <Skeleton className="h-4 w-40" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Skeleton className="h-9" />
+            <Skeleton className="h-9" />
+            <Skeleton className="h-9" />
+            <Skeleton className="h-9" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// ===== LinkButton =====
+/** Tablo içinde bağlantı gibi görünen eylem. Görünüşü bağlantı, davranışı
+ *  düğme; basma geri bildirimi ve klavye halkası ikisinde de olmalı. */
+export function LinkButton({
+  children,
+  onClick,
+  tone = 'brand',
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  tone?: 'brand' | 'slate';
+}) {
+  const tones = {
+    brand: 'text-brand hover:text-brand-dark active:text-brand-dark',
+    slate: 'text-slate-600 hover:text-slate-900 active:text-slate-900',
+  };
+  return (
+    <button
+      onClick={onClick}
+      className={`press-feedback font-medium hover:underline rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 ${tones[tone]}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ===== IconButton =====
+/** Simge düğmesi. Görsel etiketi olmadığı için aria-label zorunlu. */
+export function IconButton({
+  children,
+  onClick,
+  label,
+  tone = 'slate',
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  label: string;
+  tone?: 'slate' | 'danger';
+}) {
+  const tones = {
+    slate: 'text-slate-400 hover:text-slate-700 active:text-slate-900',
+    danger: 'text-slate-400 hover:text-red-600 active:text-red-700',
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={`press-feedback rounded p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${tones[tone]}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ===== SegmentedControl =====
+/** Sekme çubuğu. Seçili sekmenin altındaki yüzey kayarak gelir, ani yer
+ *  değiştirmez; hareket azaltıldığında kayma kalkar, renk kalır. */
+export function SegmentedControl<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  const index = Math.max(0, options.findIndex((o) => o.value === value));
+  return (
+    <div
+      role="tablist"
+      className="relative inline-flex bg-slate-100 rounded-lg p-1"
+      style={{ ['--seg' as string]: String(options.length) }}
+    >
+      {/* Kayan gösterge — seçimin nereden nereye gittiğini gösterir. */}
+      <div
+        aria-hidden
+        className="seg-thumb absolute top-1 bottom-1 rounded-md bg-white shadow-sm"
+        style={{
+          width: `calc((100% - 0.5rem) / ${options.length})`,
+          transform: `translateX(calc(${index} * 100%))`,
+        }}
+      />
+      {options.map((o) => (
+        <button
+          key={o.value}
+          role="tab"
+          aria-selected={o.value === value}
+          onClick={() => onChange(o.value)}
+          className={`press-feedback relative z-10 flex-1 px-3 py-1.5 rounded-md text-sm whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+            o.value === value ? 'font-medium text-slate-900' : 'text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}

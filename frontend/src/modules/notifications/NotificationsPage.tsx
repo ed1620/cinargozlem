@@ -30,15 +30,21 @@ export function NotificationsPage() {
           </div>
         }
       />
-      <label className="flex items-center gap-2 text-sm mb-3">
+      <label className="cursor-pointer select-none flex items-center gap-2 text-sm mb-3">
         <input type="checkbox" className="h-4 w-4 accent-brand" checked={onlyUnread} onChange={(e) => setOnlyUnread(e.target.checked)} />
         Sadece okunmamışlar
       </label>
 
       <div className="space-y-2">
-        {items.length === 0 && <Card className="p-6 text-center text-slate-400 text-sm">Uyarı yok.</Card>}
-        {items.map((n) => (
-          <Card key={n.id} className={`p-4 flex items-start justify-between gap-3 ${n.isRead ? 'opacity-60' : ''}`}>
+        {items.length === 0 && <Card className="card-rise p-6 text-center text-slate-400 text-sm">Uyarı yok.</Card>}
+        {items.map((n, i) => (
+          <Card
+            key={n.id}
+            // Kademeli giriş, listenin bir anda çakılmasını engeller;
+            // gecikme üst sınırlı, uzun listede son kart bekletmesin.
+            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+            className={`card-rise p-4 flex items-start justify-between gap-3 ${n.isRead ? 'opacity-60' : ''}`}
+          >
             <div>
               <div className="flex items-center gap-2">
                 <Badge tone={tone[n.severity]}>{n.severity}</Badge>

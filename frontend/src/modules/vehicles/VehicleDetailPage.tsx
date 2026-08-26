@@ -12,6 +12,8 @@ import {
   inputCls,
   Modal,
   PageHeader,
+  PageSkeleton,
+  IconButton,
 } from '../../components/ui';
 import { downloadReport, vehiclesApi } from '../../services/domain';
 
@@ -53,7 +55,7 @@ export function VehicleDetailPage() {
     load();
   };
 
-  if (!v) return <div className="text-slate-400">Yükleniyor…</div>;
+  if (!v) return <PageSkeleton />;
 
   const daysLeft = (d: string) => Math.round((new Date(d).getTime() - Date.now()) / 86400000);
 
@@ -81,7 +83,7 @@ export function VehicleDetailPage() {
               <span className="flex items-center gap-2">
                 {fmtDate(i.endDate)}
                 {i.status === 'ACTIVE' ? (daysLeft(i.endDate) < 0 ? <Badge tone="red">geçti</Badge> : daysLeft(i.endDate) <= 15 ? <Badge tone="amber">{daysLeft(i.endDate)}g</Badge> : <Badge tone="green">geçerli</Badge>) : <Badge tone="slate">pasif</Badge>}
-                <Can module="VEHICLES" action="DELETE"><button className="text-slate-400 hover:text-red-600" onClick={async () => { await vehiclesApi.removeInsurance(i.id); load(); }}>×</button></Can>
+                <Can module="VEHICLES" action="DELETE"><IconButton tone="danger" label="Sigorta kaydını sil" onClick={async () => { await vehiclesApi.removeInsurance(i.id); load(); }}>×</IconButton></Can>
               </span>
             </div>
           ))}

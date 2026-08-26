@@ -48,7 +48,10 @@ export function ReportsPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {REPORTS.map((r, i) => (
           <Can key={i} module={r.module} action={'EXPORT' as PermissionAction}>
-            <Card className="p-4 flex flex-col justify-between">
+            <Card
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+              className="card-rise p-4 flex flex-col justify-between"
+            >
               <div>
                 <div className="text-xs text-slate-400">{r.module}</div>
                 <div className="font-medium mt-0.5">{r.title}</div>
